@@ -263,8 +263,5 @@ def print_help():
   python main.py --scheduler look --processes 3 --verbose
   python main.py --scheduler nlook --scenario random --output results.txt
   python main.py --scheduler flook --buffers 15 --rpm 5400
-
-Автор: Студент
-Курсова робота: Алгоритми планування введення-виведення для жорсткого диска
     """
     print(help_text)

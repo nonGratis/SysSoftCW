@@ -216,7 +216,7 @@ def validate_config(config: SystemConfig) -> None:
     if config.num_processes <= 0:
         raise ValueError("Кількість процесів повинна бути додатною")
     
-    valid_schedulers = ['fifo', 'look', 'nlook', 'flook']
+    valid_schedulers = ['fifo', 'look', 'nlook']
     if config.scheduler_name.lower() not in valid_schedulers:
         raise ValueError(
             f"Невідомий алгоритм планування: {config.scheduler_name}. "
@@ -232,7 +232,7 @@ def print_help():
 Симуляція алгоритмів планування введення-виведення для жорсткого диска.
 
 Обов'язкові аргументи:
-  --scheduler NAME           Алгоритм планування I/O (fifo, look, nlook, flook)
+  --scheduler NAME           Алгоритм планування I/O (fifo, look, nlook)
 
 Необов'язкові аргументи:
   --processes N              Кількість процесів користувача (за замовчуванням: 2)
@@ -250,8 +250,7 @@ def print_help():
   fifo                       First In First Out - черга за порядком надходження
   look                       LOOK - сортування з напрямком руху головки
   nlook                      N-LOOK - кілька черг з обмеженою довжиною
-  flook                      F-LOOK - дві черги (активна та очікувальна)
-
+  
 Доступні сценарії:
   default                    Стандартний сценарій з різними зверненнями
   sequential                 Послідовні звернення до секторів
@@ -262,6 +261,5 @@ def print_help():
   python main.py --scheduler fifo
   python main.py --scheduler look --processes 3 --verbose
   python main.py --scheduler nlook --scenario random --output results.txt
-  python main.py --scheduler flook --buffers 15 --rpm 5400
     """
     print(help_text)

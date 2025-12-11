@@ -19,7 +19,6 @@ from core.buffer_cache import BufferCacheLRU2Q
 from schedulers.fifo import FIFOScheduler
 from schedulers.look import LOOKScheduler
 from schedulers.nlook import NLOOKScheduler
-from schedulers.flook import FLOOKScheduler
 from simulator.simulator import Simulator
 from scenarios.scenario1 import create_default_scenario
 from scenarios.scenario2 import create_sequential_scenario, create_random_scenario
@@ -52,7 +51,6 @@ def create_scheduler(scheduler_name: str):
         'fifo': FIFOScheduler,
         'look': LOOKScheduler,
         'nlook': NLOOKScheduler,
-        'flook': FLOOKScheduler,
     }
     
     scheduler_class = schedulers.get(scheduler_name.lower())

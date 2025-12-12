@@ -71,7 +71,7 @@ class NLOOKScheduler(IOScheduler):
             return None
         
         current_queue = self.queues[0]
-        sorted_queue = sorted(current_queue, key=lambda r: r.sector)
+        sorted_queue = sorted(current_queue, key=lambda r: r.get_track(disk.sectors_per_track))
         current_track = disk.current_track
         
         selected = None
@@ -87,8 +87,7 @@ class NLOOKScheduler(IOScheduler):
         
         if selected:
             current_queue.remove(selected)
-            simulator.log(f"IO Scheduler (NLOOK): selected request sector {selected.sector} "
-                        f"from queue 0")
+            simulator.log(f"IO Scheduler (NLOOK): selected sector {selected.sector} from queue 0")
             
             if not current_queue:
                 self.queues.pop(0)
@@ -99,6 +98,5 @@ class NLOOKScheduler(IOScheduler):
         return selected
     
     def is_empty(self) -> bool:
-        """Перевіряє чи всі черги порожні."""
-        return len(self.queues) == 0 or all(len(q) == 0 for q in self.queues)
-
+        """Перевіряє чи всі черги порожні"""
+        return not any(self.queues)

@@ -193,11 +193,15 @@ def main():
         validate_config(config)
         
         original_stdout = sys.stdout
-        output_file = redirect_output(config.output_file)
+        output_file = None
         
         try:
-            sys.stdout = output_file
+            # Перенаправлення виводу у файл якщо потрібно
+            if config.output_file:
+                output_file = open(config.output_file, 'w', encoding='utf-8')
+                sys.stdout = output_file
             
+            print_header()
             print_configuration(config)
             
             disk = HardDisk(
@@ -232,12 +236,13 @@ def main():
             simulator.run()
             
         finally:
-            if output_file != sys.stdout:
-                output_file.close()
+            # Відновлення stdout та закриття файлу
             sys.stdout = original_stdout
+            if output_file is not None:
+                output_file.close()
             
             if config.output_file:
-                print(f"\nРезультати збережено у файл: {config.output_file}")
+                print(f"\nРезультати збережено: {config.output_file}")
         
         return 0
         
@@ -249,9 +254,8 @@ def main():
         return 130
     except Exception as e:
         print(f"Критична помилка: {e}", file=sys.stderr)
-        if 'config' in locals() and hasattr(locals()['config'], 'verbose') and locals()['config'].verbose:
-            import traceback
-            traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return 1
 
 

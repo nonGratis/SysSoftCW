@@ -10,11 +10,12 @@
 
 import heapq
 from typing import List
-
+from core.disk import HardDisk
 from core.buffer_cache import BufferCacheLRU2Q
 from core.disk import HardDisk
 from core.events import Event, EventType, IORequest
 from core.process import Process
+from core.events import Event, EventType, IORequest, RequestType
 from schedulers.base import IOScheduler
 from simulator.statistics import Statistics
 
@@ -114,32 +115,35 @@ class Simulator:
         while self.event_queue:
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
+            
+            # Обробка події
+            if event.event_type == EventType.PROCESS_START:
+                self.handle_process_start(event.data)
+            elif event.event_type == EventType.SYSCALL_START:
+                self.handle_syscall_start(event.data)
+            elif event.event_type == EventType.SYSCALL_END:
+                self.handle_syscall_end(event.data)
+            elif event.event_type == EventType.DISK_SEEK_END:
+                self.handle_disk_seek_end(event.data)
+            elif event.event_type == EventType.DISK_ROTATION_END:
+                self.handle_disk_rotation_end(event.data)
+            elif event.event_type == EventType.DISK_TRANSFER_END:
+                self.handle_disk_transfer_end(event.data)
+            elif event.event_type == EventType.INTERRUPT_START:
+                self.handle_interrupt_start(event.data)
+            elif event.event_type == EventType.INTERRUPT_END:
+                self.handle_interrupt_end(event.data)
+            elif event.event_type == EventType.PROCESS_COMPUTE:
+                self.handle_process_compute(event.data)
+            
+            # Перевірка завершення всіх процесів
+            if len(self.statistics.finished_processes) == len(self.processes):
+                self.log("Всі процеси завершені")
+                break
+        
             self.handle_event(event)
         
         self.statistics.print_statistics(self)
-    
-    def handle_event(self, event: Event):
-        """
-        Обробляє одну подію відповідно до її типу.
-        
-        Args:
-            event: Подія для обробки
-        """
-        handlers = {
-            EventType.PROCESS_START: self.handle_process_start,
-            EventType.SYSCALL_START: self.handle_syscall_start,
-            EventType.SYSCALL_END: self.handle_syscall_end,
-            EventType.DISK_SEEK_END: self.handle_disk_seek_end,
-            EventType.DISK_ROTATION_END: self.handle_disk_rotation_end,
-            EventType.DISK_TRANSFER_END: self.handle_disk_transfer_end,
-            EventType.INTERRUPT_START: self.handle_interrupt_start,
-            EventType.INTERRUPT_END: self.handle_interrupt_end,
-            EventType.PROCESS_COMPUTE: self.handle_process_compute,
-        }
-        
-        handler = handlers.get(event.event_type)
-        if handler:
-            handler(event.data)
     
     def handle_process_start(self, data: dict):
         """Обробляє початок виконання процесу."""
@@ -255,7 +259,11 @@ class Simulator:
             self.current_process.quantum_remaining -= self.interrupt_time
         
         blocked_pid = self.current_io_request.process_id
-        blocked_process = next(p for p in self.processes if p.pid == blocked_pid)
+        blocked_process = next((p for p in self.processes if p.pid == blocked_pid), None)
+        
+        if blocked_process is None:
+            self.log(f"ERROR: Process {blocked_pid} not found!")
+            return
         
         self.schedule_event(self.interrupt_time, EventType.INTERRUPT_END, {
             'blocked_process': blocked_process

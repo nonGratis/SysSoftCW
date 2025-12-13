@@ -47,8 +47,6 @@ class BufferCacheLRU2Q:
         self.right_segment = deque()
         
         self.sector_to_buffer = {}
-        
-        self.free_buffers = list(range(total_buffers))
     
     def find_buffer(self, sector: int) -> Optional[Buffer]:
         """
@@ -94,18 +92,31 @@ class BufferCacheLRU2Q:
         else:
             simulator.log(f"Buffer cache: MISS sector {sector}")
             
-            if self.free_buffers:
-                buffer_id = self.free_buffers.pop()
-                simulator.log(f"Buffer cache: allocated free buffer {buffer_id}")
+            # Перевіряємо чи є вільне місце
+            current_buffers = len(self.left_segment) + len(self.right_segment)
+            
+            if current_buffers < self.total_buffers:
+                # Є вільне місце - створюємо новий буфер
+                simulator.log(f"Buffer cache: allocated new buffer")
+                buffer = Buffer(sector)
             else:
-                evicted = self.left_segment.pop()
-                simulator.log(f"Buffer cache: evicted sector {evicted.sector} from left segment")
+                # Немає місця - витісняємо з кінця лівого сегмента
+                if not self.left_segment:
+                    # Якщо лівий сегмент порожній, витісняємо з правого
+                    evicted = self.right_segment.pop()
+                    simulator.log(f"Buffer cache: evicted sector {evicted.sector} from right segment")
+                else:
+                    evicted = self.left_segment.pop()
+                    simulator.log(f"Buffer cache: evicted sector {evicted.sector} from left segment")
+                
+                # Видаляємо зі словника
                 del self.sector_to_buffer[evicted.sector]
-                buffer_id = evicted
+                
+                # Створюємо новий буфер
+                buffer = Buffer(sector)
             
-            buffer = Buffer(sector)
+            # Додаємо буфер до словника та на початок лівого сегмента
             self.sector_to_buffer[sector] = buffer
-            
             self.left_segment.appendleft(buffer)
             simulator.log(f"Buffer cache: added sector {sector} to left segment start")
             
@@ -141,4 +152,4 @@ class BufferCacheLRU2Q:
         """
         return (f"Left segment: {len(self.left_segment)} buffers, "
                 f"Right segment: {len(self.right_segment)} buffers, "
-                f"Free: {len(self.free_buffers)} buffers")
+                f"Free: {free} buffers")

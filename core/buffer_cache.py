@@ -150,6 +150,8 @@ class BufferCacheLRU2Q:
         Returns:
             Текстовий опис розподілу буферів по сегментах
         """
+        used = len(self.left_segment) + len(self.right_segment)
+        free = self.total_buffers - used
         return (f"Left segment: {len(self.left_segment)} buffers, "
                 f"Right segment: {len(self.right_segment)} buffers, "
                 f"Free: {free} buffers")

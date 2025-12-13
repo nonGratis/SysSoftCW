@@ -81,14 +81,16 @@ class Simulator:
         
         self.statistics = Statistics()
     
-    def log(self, message: str):
+    def log(self, message: str, force: bool = False):
         """
         Виводить повідомлення з поточним часом симуляції.
         
         Args:
             message: Текст повідомлення для виведення
+            force: Примусовий вивід навіть у non-verbose режимі
         """
-        print(f"Time: {self.current_time:8.3f} ms | {message}")
+        if self.verbose or force:
+            print(f"Time: {self.current_time:8.3f} ms | {message}")
     
     def schedule_event(self, delay: float, event_type: EventType, data: dict):
         """
@@ -147,7 +149,7 @@ class Simulator:
             
             # Перевірка завершення всіх процесів
             if len(self.statistics.finished_processes) == len(self.processes):
-                self.log("Всі процеси завершені")
+                self.log("Всі процеси завершені", force=True)
                 break
         
         # Вивід статистики після завершення
@@ -156,7 +158,8 @@ class Simulator:
     def handle_process_start(self, data: dict):
         """Обробляє початок виконання процесу."""
         process = data['process']
-        self.log(f"Process {process.pid}: started (quantum: {self.quantum} ms)")
+        if self.verbose:
+            self.log(f"Process {process.pid}: started (quantum: {self.quantum} ms)")
         
         process.state = "RUNNING"
         process.quantum_remaining = self.quantum
@@ -165,13 +168,14 @@ class Simulator:
         req = process.get_next_request()
         if req:
             req_type, sector = req
-            self.log(f"Process {process.pid}: next operation {req_type.value} sector {sector}")
+            if self.verbose:
+                self.log(f"Process {process.pid}: next operation {req_type.value} sector {sector}")
             self.schedule_event(0, EventType.SYSCALL_START, {
                 'process': process, 'req_type': req_type, 'sector': sector
             })
         else:
             process.state = "FINISHED"
-            self.log(f"Process {process.pid}: FINISHED")
+            self.log(f"Process {process.pid}: FINISHED", force=True)
             self.statistics.process_finished(process.pid)
             self.schedule_next_process()
     
@@ -181,7 +185,8 @@ class Simulator:
         req_type = data['req_type']
         sector = data['sector']
         
-        self.log(f"Process {process.pid}: syscall {req_type.value}(sector={sector}) started")
+        if self.verbose:
+            self.log(f"Process {process.pid}: syscall {req_type.value}(sector={sector}) started")
         
         process.quantum_remaining -= self.syscall_time
         buffer, cache_miss = self.buffer_cache.access_buffer(sector, self)
@@ -203,7 +208,8 @@ class Simulator:
         sector = data['sector']
         
         if cache_miss:
-            self.log(f"Process {process.pid}: syscall ended, need disk I/O")
+            if self.verbose:
+                self.log(f"Process {process.pid}: syscall ended, need disk I/O")
             process.state = "BLOCKED"
             
             io_request = IORequest(sector, req_type, process.pid, self.current_time)
@@ -214,7 +220,8 @@ class Simulator:
             
             self.schedule_next_process()
         else:
-            self.log(f"Process {process.pid}: syscall ended, data in cache")
+            if self.verbose:
+                self.log(f"Process {process.pid}: syscall ended, data in cache")
             process.advance()
             self.schedule_event(self.compute_time, EventType.PROCESS_COMPUTE, {'process': process})
     
@@ -234,10 +241,12 @@ class Simulator:
         self.statistics.record_disk_seek(seek_time)
         
         if seek_time > 0:
-            self.log(f"Disk: seeking to track {target_track} ({seek_desc}, {seek_time:.2f} ms)")
+            if self.verbose:
+                self.log(f"Disk: seeking to track {target_track} ({seek_desc}, {seek_time:.2f} ms)")
             self.schedule_event(seek_time, EventType.DISK_SEEK_END, {})
         else:
-            self.log(f"Disk: already at track {target_track}")
+            if self.verbose:
+                self.log(f"Disk: already at track {target_track}")
             self.schedule_event(0, EventType.DISK_SEEK_END, {})
     
     def handle_disk_seek_end(self, data: dict):
@@ -245,23 +254,27 @@ class Simulator:
         target_track = self.current_io_request.get_track(self.disk.sectors_per_track)
         self.disk.move_head_to(target_track)
         
-        self.log(f"Disk: rotational latency {self.disk.avg_rotational_latency:.2f} ms")
+        if self.verbose:
+            self.log(f"Disk: rotational latency {self.disk.avg_rotational_latency:.2f} ms")
         self.schedule_event(self.disk.avg_rotational_latency, EventType.DISK_ROTATION_END, {})
     
     def handle_disk_rotation_end(self, data: dict):
         """Обробляє завершення обертання диска."""
-        self.log(f"Disk: transferring sector {self.current_io_request.sector} "
-                f"({self.disk.sector_transfer_time:.2f} ms)")
+        if self.verbose:
+            self.log(f"Disk: transferring sector {self.current_io_request.sector} "
+                    f"({self.disk.sector_transfer_time:.2f} ms)")
         self.schedule_event(self.disk.sector_transfer_time, EventType.DISK_TRANSFER_END, {})
     
     def handle_disk_transfer_end(self, data: dict):
         """Обробляє завершення передачі даних."""
-        self.log(f"Disk: sector {self.current_io_request.sector} transfer complete")
+        if self.verbose:
+            self.log(f"Disk: sector {self.current_io_request.sector} transfer complete")
         self.schedule_event(0, EventType.INTERRUPT_START, {})
     
     def handle_interrupt_start(self, data: dict):
         """Обробляє початок апаратного переривання."""
-        self.log(f"Interrupt: disk I/O complete for sector {self.current_io_request.sector}")
+        if self.verbose:
+            self.log(f"Interrupt: disk I/O complete for sector {self.current_io_request.sector}")
         
         if self.current_process:
             self.current_process.quantum_remaining -= self.interrupt_time
@@ -270,7 +283,7 @@ class Simulator:
         blocked_process = next((p for p in self.processes if p.pid == blocked_pid), None)
         
         if blocked_process is None:
-            self.log(f"WARNING: blocked process {blocked_pid} not found")
+            self.log(f"WARNING: blocked process {blocked_pid} not found", force=True)
             self.current_io_request = None
             return
         
@@ -281,7 +294,8 @@ class Simulator:
     def handle_interrupt_end(self, data: dict):
         """Обробляє завершення обробки переривання."""
         blocked_process = data['blocked_process']
-        self.log(f"Interrupt: handled, unblocking process {blocked_process.pid}")
+        if self.verbose:
+            self.log(f"Interrupt: handled, unblocking process {blocked_process.pid}")
         
         blocked_process.state = "READY"
         blocked_process.advance()
@@ -293,12 +307,14 @@ class Simulator:
     def handle_process_compute(self, data: dict):
         """Обробляє виконання обчислень процесом."""
         process = data['process']
-        self.log(f"Process {process.pid}: computing data ({self.compute_time} ms)")
+        if self.verbose:
+            self.log(f"Process {process.pid}: computing data ({self.compute_time} ms)")
         
         process.quantum_remaining -= self.compute_time
         
         if process.quantum_remaining <= 0:
-            self.log(f"Process {process.pid}: quantum expired")
+            if self.verbose:
+                self.log(f"Process {process.pid}: quantum expired")
             self.schedule_next_process()
         else:
             if not process.is_finished():
@@ -309,7 +325,7 @@ class Simulator:
                 })
             else:
                 process.state = "FINISHED"
-                self.log(f"Process {process.pid}: FINISHED")
+                self.log(f"Process {process.pid}: FINISHED", force=True)
                 self.statistics.process_finished(process.pid)
                 self.schedule_next_process()
     

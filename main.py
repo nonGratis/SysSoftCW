@@ -135,9 +135,6 @@ def print_configuration(config: SystemConfig):
     print()
     if config.output_file:
         print(f"Результати будуть збережені у: {config.output_file}")
-        print()
-    print("-" * 80)
-    print()
 
 
 def redirect_output(filename: Optional[str]):
@@ -201,7 +198,6 @@ def main():
                 output_file = open(config.output_file, 'w', encoding='utf-8')
                 sys.stdout = output_file
             
-            print_header()
             print_configuration(config)
             
             disk = HardDisk(

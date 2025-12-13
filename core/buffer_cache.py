@@ -79,7 +79,8 @@ class BufferCacheLRU2Q:
         buffer = self.find_buffer(sector)
         
         if buffer is not None:
-            simulator.log(f"Buffer cache: HIT sector {sector}")
+            if simulator.verbose:
+                simulator.log(f"Buffer cache: HIT sector {sector}")
             
             if buffer in self.left_segment:
                 self.left_segment.remove(buffer)
@@ -90,24 +91,28 @@ class BufferCacheLRU2Q:
             
             return buffer, False
         else:
-            simulator.log(f"Buffer cache: MISS sector {sector}")
+            if simulator.verbose:
+                simulator.log(f"Buffer cache: MISS sector {sector}")
             
             # Перевіряємо чи є вільне місце
             current_buffers = len(self.left_segment) + len(self.right_segment)
             
             if current_buffers < self.total_buffers:
                 # Є вільне місце - створюємо новий буфер
-                simulator.log(f"Buffer cache: allocated new buffer")
+                if simulator.verbose:
+                    simulator.log(f"Buffer cache: allocated new buffer")
                 buffer = Buffer(sector)
             else:
                 # Немає місця - витісняємо з кінця лівого сегмента
                 if not self.left_segment:
                     # Якщо лівий сегмент порожній, витісняємо з правого
                     evicted = self.right_segment.pop()
-                    simulator.log(f"Buffer cache: evicted sector {evicted.sector} from right segment")
+                    if simulator.verbose:
+                        simulator.log(f"Buffer cache: evicted sector {evicted.sector} from right segment")
                 else:
                     evicted = self.left_segment.pop()
-                    simulator.log(f"Buffer cache: evicted sector {evicted.sector} from left segment")
+                    if simulator.verbose:
+                        simulator.log(f"Buffer cache: evicted sector {evicted.sector} from left segment")
                 
                 # Видаляємо зі словника
                 del self.sector_to_buffer[evicted.sector]
@@ -118,7 +123,8 @@ class BufferCacheLRU2Q:
             # Додаємо буфер до словника та на початок лівого сегмента
             self.sector_to_buffer[sector] = buffer
             self.left_segment.appendleft(buffer)
-            simulator.log(f"Buffer cache: added sector {sector} to left segment start")
+            if simulator.verbose:
+                simulator.log(f"Buffer cache: added sector {sector} to left segment start")
             
             return buffer, True
     
@@ -136,12 +142,14 @@ class BufferCacheLRU2Q:
         if len(self.right_segment) >= self.max_right_segment:
             moved = self.right_segment.pop()
             self.left_segment.appendleft(moved)
-            simulator.log(f"Buffer cache: moved sector {moved.sector} "
-                         f"from right to left segment")
+            if simulator.verbose:
+                simulator.log(f"Buffer cache: moved sector {moved.sector} "
+                             f"from right to left segment")
         
         self.right_segment.appendleft(buffer)
-        simulator.log(f"Buffer cache: moved sector {buffer.sector} "
-                     f"to right segment start")
+        if simulator.verbose:
+            simulator.log(f"Buffer cache: moved sector {buffer.sector} "
+                         f"to right segment start")
     
     def get_stats(self) -> str:
         """

@@ -37,6 +37,7 @@ class FIFOScheduler(IOScheduler):
         """
         if self.queue:
             request = self.queue.popleft()
-            simulator.log(f"IO Scheduler (FIFO): selected request sector {request.sector}")
+            if simulator.verbose:
+                simulator.log(f"IO Scheduler (FIFO): selected request sector {request.sector}")
             return request
         return None

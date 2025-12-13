@@ -46,13 +46,19 @@ class NLOOKScheduler(IOScheduler):
             request: Запит для додавання
             simulator: Об'єкт симулятора для логування
         """
+        # Якщо всі черги порожні, створюємо нову
+        if not self.queues:
+            self.queues.append(deque())
+        
         if len(self.queues[-1]) >= self.max_queue_length:
             self.queues.append(deque())
-            simulator.log(f"IO Scheduler (NLOOK): created new queue (total: {len(self.queues)})")
+            if simulator.verbose:
+                simulator.log(f"IO Scheduler (NLOOK): created new queue (total: {len(self.queues)})")
         
         self.queues[-1].append(request)
-        simulator.log(f"IO Scheduler (NLOOK): added request {request.request_type.value} "
-                     f"sector {request.sector} to queue {len(self.queues)-1}")
+        if simulator.verbose:
+            simulator.log(f"IO Scheduler (NLOOK): added request {request.request_type.value} "
+                         f"sector {request.sector} to queue {len(self.queues)-1}")
     
     def get_next_request(self, disk: HardDisk, simulator) -> Optional[IORequest]:
         """
@@ -83,15 +89,17 @@ class NLOOKScheduler(IOScheduler):
         
         if selected is None and sorted_queue:
             selected = sorted_queue[0]
-            simulator.log(f"IO Scheduler (NLOOK): no suitable request, taking from start")
+            if simulator.verbose:
+                simulator.log(f"IO Scheduler (NLOOK): no suitable request, taking from start")
         
         if selected:
             current_queue.remove(selected)
-            simulator.log(f"IO Scheduler (NLOOK): selected sector {selected.sector} from queue 0")
+            if simulator.verbose:
+                simulator.log(f"IO Scheduler (NLOOK): selected sector {selected.sector} from queue 0")
             
             if not current_queue:
                 self.queues.pop(0)
-                if self.queues:
+                if self.queues and simulator.verbose:
                     simulator.log(f"IO Scheduler (NLOOK): queue 0 processed, "
                                 f"switching to next queue")
         

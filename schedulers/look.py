@@ -62,8 +62,9 @@ class LOOKScheduler(IOScheduler):
             if self.current_track_accesses >= self.max_track_accesses:
                 self.direction_increasing = not self.direction_increasing
                 self.current_track_accesses = 0
-                simulator.log(f"IO Scheduler (LOOK): changed direction to "
-                            f"{'increasing' if self.direction_increasing else 'decreasing'}")
+                if simulator.verbose:
+                    simulator.log(f"IO Scheduler (LOOK): changed direction to "
+                                f"{'increasing' if self.direction_increasing else 'decreasing'}")
         else:
             self.current_track_accesses = 0
         
@@ -87,8 +88,9 @@ class LOOKScheduler(IOScheduler):
                     sorted_queue[-1].get_track(disk.sectors_per_track))
                 
                 selected = sorted_queue[0] if seek_to_first <= seek_to_last else sorted_queue[-1]
-                simulator.log(f"IO Scheduler (LOOK): no requests in current direction, "
-                            f"changed to decreasing")
+                if simulator.verbose:
+                    simulator.log(f"IO Scheduler (LOOK): no requests in current direction, "
+                                f"changed to decreasing")
         else:
             for req in reversed(sorted_queue):
                 req_track = req.get_track(disk.sectors_per_track)
@@ -106,12 +108,14 @@ class LOOKScheduler(IOScheduler):
                     sorted_queue[-1].get_track(disk.sectors_per_track))
                 
                 selected = sorted_queue[0] if seek_to_first <= seek_to_last else sorted_queue[-1]
-                simulator.log(f"IO Scheduler (LOOK): no requests in current direction, "
-                            f"changed to increasing")
+                if simulator.verbose:
+                    simulator.log(f"IO Scheduler (LOOK): no requests in current direction, "
+                                f"changed to increasing")
         
         if selected:
             self.queue.remove(selected)
-            simulator.log(f"IO Scheduler (LOOK): selected request sector {selected.sector} "
-                        f"(direction: {'increasing' if self.direction_increasing else 'decreasing'})")
+            if simulator.verbose:
+                simulator.log(f"IO Scheduler (LOOK): selected request sector {selected.sector} "
+                            f"(direction: {'increasing' if self.direction_increasing else 'decreasing'})")
         
         return selected

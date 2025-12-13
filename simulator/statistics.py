@@ -47,14 +47,18 @@ class Statistics:
         """Реєструє промах буферного кешу."""
         self.cache_misses += 1
     
-    def process_finished(self, pid: int):
+    def process_finished(self, pid: int, verbose: bool = False):
         """
         Реєструє завершення процесу.
         
         Args:
             pid: Ідентифікатор завершеного процесу
+            verbose: Чи виводити логування
         """
-        self.finished_processes.add(pid)
+        if pid not in self.finished_processes:
+            self.finished_processes.add(pid)
+            if verbose:
+                print(f"Statistics: Process {pid} marked as finished (total: {len(self.finished_processes)})")
     
     def get_cache_hit_rate(self) -> float:
         """

@@ -176,7 +176,7 @@ class Simulator:
         else:
             process.state = "FINISHED"
             self.log(f"Process {process.pid}: FINISHED", force=True)
-            self.statistics.process_finished(process.pid)
+            self.statistics.process_finished(process.pid, self.verbose)
             self.schedule_next_process()
     
     def handle_syscall_start(self, data: dict):
@@ -223,7 +223,15 @@ class Simulator:
             if self.verbose:
                 self.log(f"Process {process.pid}: syscall ended, data in cache")
             process.advance()
-            self.schedule_event(self.compute_time, EventType.PROCESS_COMPUTE, {'process': process})
+            
+            # Перевіряємо, чи процес завершився після advance
+            if process.is_finished():
+                process.state = "FINISHED"
+                self.log(f"Process {process.pid}: FINISHED", force=True)
+                self.statistics.process_finished(process.pid, self.verbose)
+                self.schedule_next_process()
+            else:
+                self.schedule_event(self.compute_time, EventType.PROCESS_COMPUTE, {'process': process})
     
     def start_disk_operation(self):
         """Ініціює виконання операції введення-виведення на диску."""
@@ -297,8 +305,15 @@ class Simulator:
         if self.verbose:
             self.log(f"Interrupt: handled, unblocking process {blocked_process.pid}")
         
-        blocked_process.state = "READY"
         blocked_process.advance()
+        
+        # Перевіряємо, чи процес завершився після advance
+        if blocked_process.is_finished():
+            blocked_process.state = "FINISHED"
+            self.log(f"Process {blocked_process.pid}: FINISHED", force=True)
+            self.statistics.process_finished(blocked_process.pid, self.verbose)
+        else:
+            blocked_process.state = "READY"
         
         self.current_io_request = None
         self.start_disk_operation()        
@@ -326,7 +341,7 @@ class Simulator:
             else:
                 process.state = "FINISHED"
                 self.log(f"Process {process.pid}: FINISHED", force=True)
-                self.statistics.process_finished(process.pid)
+                self.statistics.process_finished(process.pid, self.verbose)
                 self.schedule_next_process()
     
     def schedule_next_process(self):

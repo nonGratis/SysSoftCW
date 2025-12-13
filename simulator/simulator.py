@@ -141,10 +141,9 @@ class Simulator:
                 self.log("Всі процеси завершені")
                 break
         
-            self.handle_event(event)
-        
+        # Вивід статистики після завершення
         self.statistics.print_statistics(self)
-    
+        
     def handle_process_start(self, data: dict):
         """Обробляє початок виконання процесу."""
         process = data['process']

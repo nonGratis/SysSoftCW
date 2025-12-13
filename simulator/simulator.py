@@ -112,7 +112,16 @@ class Simulator:
         if self.processes:
             self.schedule_event(0, EventType.PROCESS_START, {'process': self.processes[0]})
         
-        while self.event_queue:
+        # Цикл продовжується поки є події або незавершені процеси
+        while self.event_queue or any(not p.is_finished() for p in self.processes):
+            # Якщо черга порожня, але є READY процеси — планувати їх
+            if not self.event_queue:
+                self.schedule_next_process()
+                if not self.event_queue:
+                    # Якщо все ще немає подій — прорив у симуляції
+                    self.log("WARNING: No events scheduled but processes not finished")
+                    break
+            
             event = heapq.heappop(self.event_queue)
             self.current_time = event.time
             
@@ -261,7 +270,8 @@ class Simulator:
         blocked_process = next((p for p in self.processes if p.pid == blocked_pid), None)
         
         if blocked_process is None:
-            self.log(f"ERROR: Process {blocked_pid} not found!")
+            self.log(f"WARNING: blocked process {blocked_pid} not found")
+            self.current_io_request = None
             return
         
         self.schedule_event(self.interrupt_time, EventType.INTERRUPT_END, {
@@ -277,7 +287,8 @@ class Simulator:
         blocked_process.advance()
         
         self.current_io_request = None
-        self.start_disk_operation()
+        self.start_disk_operation()        
+        self.schedule_next_process()
     
     def handle_process_compute(self, data: dict):
         """Обробляє виконання обчислень процесом."""
@@ -307,10 +318,13 @@ class Simulator:
         ready_processes = [p for p in self.processes if p.state == "READY"]
         
         if not ready_processes:
-            self.log("Scheduler: no ready processes")
+            if self.verbose:
+                self.log("Scheduler: no ready processes")
             self.current_process = None
             return
         
         next_process = ready_processes[0]
+        if self.verbose:
+            self.log(f"Scheduler: selecting process {next_process.pid} for execution")
         self.schedule_event(0, EventType.PROCESS_START, {'process': next_process})
 
